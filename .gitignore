@@ -1,3 +1,7 @@
 .idea
-.pyc*
+.pyc
 .pickle
+.ipynb_checkpoints/
+.ipynb
+__pycache__/
+recipes/__pycache__/

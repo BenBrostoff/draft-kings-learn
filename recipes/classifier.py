@@ -1,85 +1,97 @@
+import sys
 import pickle
+from collections import Counter
 from sklearn import tree
-import draft_kings_db
-from draft_kings_db import models
+from sklearn.model_selection import train_test_split
+from sklearn.tree import export_graphviz
+from sklearn.externals.six import StringIO
+import numpy
+import pydotplus
+from IPython.display import Image
+from client import (
+    get_client,
+    get_performances,
+    get_perf_value,
+    print_performance_data,
+)
 
-# TODO - Dockerize this setup to avoid requests from S3
-client = draft_kings_db.client.DraftKingsHistory()
-client.initialize_nba()
+
+seed = False
+if len(sys.argv) > 1 and sys.argv[1] == 'seed':
+    seed = True
+
+client = get_client(seed=seed)
 
 features = []
 labels = []
 
-
-def get_perf_value(perf):
-    return float(perf.draft_kings_points) / (perf.salary / 1000.)
-
-names = []
-values = []
-for res in client.session.query(models.NBAPerformance).all():
-    names.append(res.name)
-    values.append(res)
-
-
-def get_tier_results(min_val, max_val, val):
-    total = [p for p in values if p.salary >= min_val and p.salary < max_val]
-    high_value = [p for p in total if get_perf_value(p) > val]
-
-    print(
-        '{}% above {} for {} - {}'.format(
-            round(float(len(high_value)) / len(total), 2) * 100,
-            val,
-            min_val,
-            max_val
-        )
-    )
-
-print(' ')
-print('Total values: {}'.format(len(values)))
-get_tier_results(3000, 4000, 5)
-get_tier_results(4000, 5000, 5)
-get_tier_results(5000, 6000, 5)
-get_tier_results(6000, 7000, 5)
-get_tier_results(7000, 8000, 5)
-get_tier_results(8000, 9000, 5)
-get_tier_results(9000, 10000, 5)
-get_tier_results(10000, 11000, 5)
-print(' ')
+names, performances = get_performances(client)
+print_performance_data(performances)
 
 LOOK_BACK = 12
 for name in set(names):
     performances = client.lookup_nba_performances(name, limit=LOOK_BACK)
-    if len(performances) < LOOK_BACK:
-        continue
-
-    for idx in range(LOOK_BACK):
-        if idx < LOOK_BACK - 2:
-            last = performances[idx]
+    total = len(performances)
+    for idx in range(total):
+        if idx < total - 2:
+            last = performances[0]
+            if last.salary == 3000:
+                continue
+            prev_three = performances[1:4]
+            val = get_perf_value(last)
             features.append([
                 performances[idx].salary,
-                performances[idx + 1].salary,
-                performances[idx + 1].draft_kings_points,
+                numpy.mean([x.salary for x in prev_three]),
+                numpy.std([x.draft_kings_points for x in prev_three]),
+                numpy.mean([x.draft_kings_points for x in prev_three]),
+                numpy.mean([x.minutes for x in prev_three]),
+                numpy.mean([x.rebounds for x in prev_three]),
+                numpy.mean([x.assists for x in prev_three]),
+                numpy.mean([x.blocks for x in prev_three]),
+                numpy.mean([x.steals for x in prev_three]),
+                numpy.mean([x.turnovers for x in prev_three]),
             ])
-            labels.append(0 if get_perf_value(last) < 5 else 1)
+            if val < 4:
+                labels.append(0)
+            elif val < 5:
+                labels.append(1)
+            elif val < 6:
+                labels.append(2)
+            else:
+                labels.append(3)
+
+print(
+    Counter(labels)
+)
+
+X_train, X_test, y_train, y_test = train_test_split(
+    features,
+    labels,
+    test_size=0.1,
+    random_state=42
+)
+
 
 print('Total performances: {}'.format(len(labels)))
 
 
 clf = tree.DecisionTreeClassifier()
-clf.fit(features, labels)
-
-# try some examples
-for sal in [4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000]:
-    for last in [30, 40, 50, 60]:
-        print(
-            '{} {}: {}'.format(
-                sal,
-                last,
-                clf.predict([[sal, sal, last]])
-            )
-        )
-    print(' ')
-
+clf.fit(X_train, y_train)
+print(
+    'Score: {}'.format(clf.score(X_test, y_test)),
+)
 
 # save as pickle for use in other projects
 pickle.dump({'clf': clf}, open('clf.pickle', 'wb'))
+
+# visualize
+dot_data = StringIO()
+export_graphviz(
+    clf,
+    out_file=dot_data,
+    filled=True,
+    rounded=True,
+    special_characters=True
+    )
+graph = pydotplus.graph_from_dot_data(dot_data.getvalue())
+Image(graph.create_png())
