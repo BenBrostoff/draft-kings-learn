@@ -31,22 +31,22 @@ for name in set(names):
     performances = client.lookup_nba_performances(name, limit=None)
     total = len(performances)
     for idx in range(total):
-        if idx < total - 2:
-            last = performances[0]
+        if idx < total - 3:
+            last = performances[idx]
             if last.draft_kings_points == 0:
                 continue
-            prev_three = performances[1:4]
+            prev_three = performances[idx:idx + 3]
             val = get_perf_value(last)
             features.append([
                 performances[idx].salary,
-                performances[1].salary,
-                performances[1].draft_kings_points,
-                performances[1].minutes,
-                performances[1].rebounds,
-                performances[1].assists,
-                performances[1].blocks,
-                performances[1].steals,
-                performances[1].turnovers,
+                performances[idx + 1].salary,
+                performances[idx + 1].draft_kings_points,
+                performances[idx + 1].minutes,
+                performances[idx + 1].rebounds,
+                performances[idx + 1].assists,
+                performances[idx + 1].blocks,
+                performances[idx + 1].steals,
+                performances[idx + 1].turnovers,
 
                 numpy.mean([x.salary for x in prev_three]),
                 numpy.std([x.draft_kings_points for x in prev_three]),
@@ -88,9 +88,9 @@ print(
     'Score: {}'.format(clf.score(X_test, y_test)),
 )
 
-# # save as pickle for use in other projects
-# pickle.dump({'clf': clf}, open('clf.pickle', 'wb'))
-#
+# save as pickle for use in other projects
+pickle.dump({'clf': clf}, open('clf.pickle', 'wb'))
+
 # # visualize
 # dot_data = StringIO()
 # export_graphviz(
