@@ -15,7 +15,6 @@ from client import (
     print_performance_data,
 )
 
-
 seed = False
 if len(sys.argv) > 1 and sys.argv[1] == 'seed':
     seed = True
@@ -28,19 +27,27 @@ labels = []
 names, performances = get_performances(client)
 print_performance_data(performances)
 
-LOOK_BACK = 12
 for name in set(names):
-    performances = client.lookup_nba_performances(name, limit=LOOK_BACK)
+    performances = client.lookup_nba_performances(name, limit=None)
     total = len(performances)
     for idx in range(total):
         if idx < total - 2:
             last = performances[0]
-            if last.salary == 3000:
+            if last.draft_kings_points == 0:
                 continue
             prev_three = performances[1:4]
             val = get_perf_value(last)
             features.append([
                 performances[idx].salary,
+                performances[1].salary,
+                performances[1].draft_kings_points,
+                performances[1].minutes,
+                performances[1].rebounds,
+                performances[1].assists,
+                performances[1].blocks,
+                performances[1].steals,
+                performances[1].turnovers,
+
                 numpy.mean([x.salary for x in prev_three]),
                 numpy.std([x.draft_kings_points for x in prev_three]),
                 numpy.mean([x.draft_kings_points for x in prev_three]),
@@ -67,7 +74,7 @@ print(
 X_train, X_test, y_train, y_test = train_test_split(
     features,
     labels,
-    test_size=0.1,
+    test_size=0.05,
     random_state=42
 )
 
@@ -81,17 +88,17 @@ print(
     'Score: {}'.format(clf.score(X_test, y_test)),
 )
 
-# save as pickle for use in other projects
-pickle.dump({'clf': clf}, open('clf.pickle', 'wb'))
-
-# visualize
-dot_data = StringIO()
-export_graphviz(
-    clf,
-    out_file=dot_data,
-    filled=True,
-    rounded=True,
-    special_characters=True
-    )
-graph = pydotplus.graph_from_dot_data(dot_data.getvalue())
-Image(graph.create_png())
+# # save as pickle for use in other projects
+# pickle.dump({'clf': clf}, open('clf.pickle', 'wb'))
+#
+# # visualize
+# dot_data = StringIO()
+# export_graphviz(
+#     clf,
+#     out_file=dot_data,
+#     filled=True,
+#     rounded=True,
+#     special_characters=True
+#     )
+# graph = pydotplus.graph_from_dot_data(dot_data.getvalue())
+# Image(graph.create_png())
