@@ -27,15 +27,16 @@ labels = []
 names, performances = get_performances(client)
 # print_performance_data(performances)
 
+LOOK_BACK = 3
 for name in set(names):
     performances = client.lookup_nba_performances(name, limit=None)
     total = len(performances)
 
     for idx in range(total):
-        if idx < total - 3:
+        if idx < total - LOOK_BACK:
             last = performances[idx]
             prev = performances[idx + 1]
-            prev_three = performances[(idx + 1):(idx + 4)]
+            prev_three = performances[(idx + 1):(idx + LOOK_BACK + 1)]
 
             if last.draft_kings_points == 0 or (
                 0 in [p.draft_kings_points for p in prev_three]
@@ -78,7 +79,7 @@ X_train, X_test, y_train, y_test = train_test_split(
     features,
     labels,
     test_size=0.3,
-    random_state=0,
+    random_state=42,
 )
 
 print('Total performances: {}'.format(len(labels)))
