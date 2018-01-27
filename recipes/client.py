@@ -19,7 +19,7 @@ def get_perf_value(perf):
     (ex. DeMarcus Cousins at 7x value is preferable to Andre
     Roberson at 12x value).
     '''
-    bonus = perf.draft_kings_points / 60
+    bonus = perf.draft_kings_points / 35
     mult = 1 if bonus < 1 else (1 + bonus)
     return (float(perf.draft_kings_points) / (perf.salary / 1000.)) * mult
 

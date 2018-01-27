@@ -25,28 +25,33 @@ features = []
 labels = []
 
 names, performances = get_performances(client)
-print_performance_data(performances)
+# print_performance_data(performances)
 
 for name in set(names):
     performances = client.lookup_nba_performances(name, limit=None)
     total = len(performances)
+
     for idx in range(total):
         if idx < total - 3:
             last = performances[idx]
-            if last.draft_kings_points == 0:
+            prev = performances[idx + 1]
+            prev_three = performances[(idx + 1):(idx + 4)]
+
+            if last.draft_kings_points == 0 or (
+                0 in [p.draft_kings_points for p in prev_three]
+            ):
                 continue
-            prev_three = performances[idx:idx + 3]
-            val = get_perf_value(last)
+
             features.append([
-                performances[idx].salary,
-                performances[idx + 1].salary,
-                performances[idx + 1].draft_kings_points,
-                performances[idx + 1].minutes,
-                performances[idx + 1].rebounds,
-                performances[idx + 1].assists,
-                performances[idx + 1].blocks,
-                performances[idx + 1].steals,
-                performances[idx + 1].turnovers,
+                last.salary,
+                prev.salary,
+                prev.draft_kings_points,
+                prev.minutes,
+                prev.rebounds,
+                prev.assists,
+                prev.blocks,
+                prev.steals,
+                prev.turnovers,
 
                 numpy.mean([x.salary for x in prev_three]),
                 numpy.std([x.draft_kings_points for x in prev_three]),
@@ -58,14 +63,12 @@ for name in set(names):
                 numpy.mean([x.steals for x in prev_three]),
                 numpy.mean([x.turnovers for x in prev_three]),
             ])
-            if val < 4:
+
+            val = get_perf_value(last)
+            if val < 4.5:
                 labels.append(0)
-            elif val < 5:
-                labels.append(1)
-            elif val < 6:
-                labels.append(2)
             else:
-                labels.append(3)
+                labels.append(1)
 
 print(
     Counter(labels)
@@ -74,10 +77,9 @@ print(
 X_train, X_test, y_train, y_test = train_test_split(
     features,
     labels,
-    test_size=0.05,
-    random_state=42
+    test_size=0.3,
+    random_state=0,
 )
-
 
 print('Total performances: {}'.format(len(labels)))
 
