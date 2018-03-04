@@ -1,1 +1,1 @@
-from recipes import classifier
+from recipes import classifier, linear_regressor
